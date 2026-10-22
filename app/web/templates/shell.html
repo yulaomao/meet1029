@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="app-shell">
+  {% include "partials/nav.html" %}
+  <div class="app-main">
+    <header class="topbar">
+      <div class="topbar-title">{% block page_title %}首页{% endblock %}</div>
+      <div class="topbar-user">{{ current_user.name if current_user.is_authenticated else "" }}</div>
+    </header>
+    <main class="page-content">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for cat, msg in messages %}
+            <div class="banner banner-{{ cat }}">{{ msg }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+  {% include "partials/mobile_nav.html" %}
+</div>
+{% endblock %}

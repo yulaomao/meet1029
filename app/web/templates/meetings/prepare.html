@@ -1,0 +1,151 @@
+{% extends "shell.html" %}
+{% block title %}准备开始会议{% endblock %}
+{% block page_title %}准备开始会议{% endblock %}
+{% block content %}
+<h1>{{ meeting.name }}</h1>
+<section class="form-stack" aria-label="麦克风">
+  <label for="mic-device">麦克风</label>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <select id="mic-device" aria-label="选择麦克风"></select>
+    <button type="button" id="mic-refresh">更换</button>
+  </div>
+  <p class="muted" id="mic-device-label">正在枚举输入设备……</p>
+  <div class="enroll-bar" aria-hidden="true"><span id="mic-meter-fill"></span></div>
+  <p class="muted" id="mic-meter-text">正在检测声音……</p>
+</section>
+<ul class="check-list">
+  <li id="chk-mic">● 麦克风权限正常</li>
+  <li>● 实时音频支持</li>
+  <li>● 本地可靠录音正常</li>
+  <li>● 本地缓存正常</li>
+  <li>● 服务器连接正常</li>
+</ul>
+<form method="post" class="form-stack" id="consent-form">
+  {% include "partials/csrf.html" %}
+
+  <label class="consent-row">
+    <input type="checkbox" name="consent" id="consent" required>
+    已告知与会人员会议正在录音及AI转写
+  </label>
+  <input type="hidden" name="client_id" id="client_id" value="web">
+  <button class="btn-primary" type="submit" id="start-meeting">开始会议</button>
+</form>
+<p class="muted">开始按钮在未勾选同意前不可提交。</p>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var key = "meeting-client-id";
+  var id = sessionStorage.getItem(key);
+  if (!id) {
+    id = "web-" + Math.random().toString(36).slice(2, 10);
+    sessionStorage.setItem(key, id);
+  }
+  var el = document.getElementById("client_id");
+  if (el) el.value = id;
+
+  var DEVICE_KEY = "meeting-mic-device-id";
+  var select = document.getElementById("mic-device");
+  var label = document.getElementById("mic-device-label");
+  var fill = document.getElementById("mic-meter-fill");
+  var meterText = document.getElementById("mic-meter-text");
+  var chk = document.getElementById("chk-mic");
+  var stream = null;
+  var ctx = null;
+  var raf = 0;
+
+  function setLabel(text) {
+    if (label) label.textContent = text;
+  }
+
+  async function listDevices() {
+    var devices = await navigator.mediaDevices.enumerateDevices();
+    var inputs = devices.filter(function (d) { return d.kind === "audioinput"; });
+    var saved = localStorage.getItem(DEVICE_KEY) || "";
+    select.innerHTML = "";
+    inputs.forEach(function (d, i) {
+      var opt = document.createElement("option");
+      opt.value = d.deviceId;
+      opt.textContent = d.label || ("麦克风 " + (i + 1));
+      if (d.deviceId === saved) opt.selected = true;
+      select.appendChild(opt);
+    });
+    if (!select.value && inputs.length) {
+      select.selectedIndex = 0;
+    }
+    if (select.value) {
+      localStorage.setItem(DEVICE_KEY, select.value);
+    }
+    var chosen = select.options[select.selectedIndex];
+    setLabel(chosen ? chosen.textContent : "未发现输入设备");
+    return inputs;
+  }
+
+  function stopMeter() {
+    if (raf) cancelAnimationFrame(raf);
+    raf = 0;
+    if (stream) {
+      stream.getTracks().forEach(function (t) { t.stop(); });
+      stream = null;
+    }
+    if (ctx) {
+      try { ctx.close(); } catch (_e) {}
+      ctx = null;
+    }
+  }
+
+  async function startMeter(deviceId) {
+    stopMeter();
+    var constraints = { echoCancellation: true, noiseSuppression: true, channelCount: 1 };
+    if (deviceId) constraints.deviceId = { exact: deviceId };
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: constraints });
+    } catch (_e) {
+      delete constraints.deviceId;
+      stream = await navigator.mediaDevices.getUserMedia({ audio: constraints });
+    }
+    if (chk) chk.textContent = "● 麦克风权限正常";
+    await listDevices();
+    ctx = new AudioContext();
+    var src = ctx.createMediaStreamSource(stream);
+    var analyser = ctx.createAnalyser();
+    analyser.fftSize = 2048;
+    src.connect(analyser);
+    var data = new Uint8Array(analyser.fftSize);
+    function tick() {
+      analyser.getByteTimeDomainData(data);
+      var sum = 0;
+      for (var i = 0; i < data.length; i++) {
+        var v = (data[i] - 128) / 128;
+        sum += v * v;
+      }
+      var rms = Math.sqrt(sum / data.length);
+      var pct = Math.min(100, Math.round(rms * 400));
+      if (fill) fill.style.width = pct + "%";
+      if (meterText) meterText.textContent = pct > 8 ? "检测到声音" : "正在检测声音……";
+      raf = requestAnimationFrame(tick);
+    }
+    tick();
+  }
+
+  if (select) {
+    select.addEventListener("change", function () {
+      localStorage.setItem(DEVICE_KEY, select.value);
+      startMeter(select.value);
+    });
+  }
+  var refresh = document.getElementById("mic-refresh");
+  if (refresh) {
+    refresh.addEventListener("click", function () {
+      startMeter(select && select.value);
+    });
+  }
+  if (navigator.mediaDevices) {
+    startMeter(localStorage.getItem(DEVICE_KEY) || "").catch(function () {
+      if (chk) chk.textContent = "○ 麦克风不可用";
+      setLabel("无法访问麦克风");
+    });
+  }
+})();
+</script>
+{% endblock %}

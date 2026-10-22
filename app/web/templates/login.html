@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}登录 · AI 会议{% endblock %}
+{% block body_class %}login-page{% endblock %}
+{% block body %}
+<div class="login-card">
+  <h1>AI 会议工作台</h1>
+  <p class="muted">团队内部会议记录与助手</p>
+  <form method="post">
+    {% include "partials/csrf.html" %}
+    <label>邮箱
+      <input type="email" name="email" required value="admin@local" autocomplete="username">
+    </label>
+    <label>密码
+      <input type="password" name="password" required autocomplete="current-password">
+    </label>
+    <button type="submit" class="btn-primary">登录</button>
+  </form>
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}<p class="error">{{ messages[0] }}</p>{% endif %}
+  {% endwith %}
+</div>
+{% endblock %}

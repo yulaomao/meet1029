@@ -1,0 +1,108 @@
+{% extends "shell.html" %}
+{% block title %}开始会议{% endblock %}
+{% block page_title %}开始会议{% endblock %}
+{% block content %}
+<div class="meeting-start-layout">
+  <section class="panel">
+    <div class="section-title"><h2>会议设置</h2><span class="badge badge-ai">本地转写</span></div>
+    <p class="muted">不填写标题时，会议结束后会依据完整内容自动命名。已有录音可<a href="{{ url_for('meetings.import_audio') }}">直接导入生成会议记录</a>。</p>
+    <form method="post" class="form-stack" id="new-meeting-form">
+      {% include "partials/csrf.html" %}
+      <label>会议名称
+        <input name="name" placeholder="例如：产品方案讨论（可留空）">
+      </label>
+      <label>预计人数
+        <select name="expected_speakers">
+          <option>2</option><option selected>4</option><option>6</option><option>8</option>
+        </select>
+      </label>
+      <label>会议类型
+        <select name="meeting_type">
+          <option>技术讨论</option><option>项目例会</option><option>评审</option><option>其他</option>
+        </select>
+      </label>
+      <input type="hidden" name="consent" id="consent" value="">
+      <input type="hidden" name="client_id" id="client_id" value="web">
+      <button class="btn-primary" type="button" id="review-start">开始会议</button>
+    </form>
+  </section>
+
+  <section class="panel form-stack" aria-label="麦克风检查">
+    <div class="section-title"><h2>开始前检查</h2><span class="badge" id="mic-state">检查中</span></div>
+    <label for="mic-device">麦克风</label>
+    <div class="button-row">
+      <select id="mic-device" aria-label="选择麦克风"></select>
+      <button type="button" id="mic-refresh">刷新</button>
+    </div>
+    <p class="muted" id="mic-device-label">正在枚举输入设备……</p>
+    <div class="enroll-bar" aria-hidden="true"><span id="mic-meter-fill"></span></div>
+    <p class="muted" id="mic-meter-text">正在检测声音……</p>
+    <ul class="check-list compact-check-list">
+      <li id="chk-mic">○ 麦克风权限</li>
+      <li>● 实时音频与本地缓存</li>
+      <li id="chk-server">○ 本地服务连接</li>
+    </ul>
+    <p class="muted">开始后即开始录音和转写；确认前请先告知与会人员。</p>
+  </section>
+</div>
+
+<dialog id="start-confirm" class="start-confirm">
+  <form method="dialog" class="form-stack">
+    <h2>确认开始会议？</h2>
+    <p>我已告知与会人员，本次会议将进行本地录音和 AI 转写。</p>
+    <div class="button-row">
+      <button value="cancel">返回</button>
+      <button class="btn-primary" value="confirm" id="confirm-start">确认并开始</button>
+    </div>
+  </form>
+</dialog>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var form = document.getElementById("new-meeting-form"), consent = document.getElementById("consent");
+  var review = document.getElementById("review-start"), dialog = document.getElementById("start-confirm");
+  var confirmStart = document.getElementById("confirm-start"), client = document.getElementById("client_id");
+  var key = "meeting-client-id", id = sessionStorage.getItem(key);
+  if (!id) { id = "web-" + Math.random().toString(36).slice(2, 10); sessionStorage.setItem(key, id); }
+  if (client) client.value = id;
+  function begin() { if (consent) consent.value = "1"; if (form) form.requestSubmit(); }
+  if (review) review.addEventListener("click", function () {
+    if (dialog && dialog.showModal) dialog.showModal();
+    else if (window.confirm("请确认已告知与会人员，本次会议将进行本地录音和 AI 转写。")) begin();
+  });
+  if (confirmStart) confirmStart.addEventListener("click", function (event) { event.preventDefault(); dialog.close(); begin(); });
+  if (form) form.addEventListener("submit", function (event) {
+    if (!consent || consent.value !== "1") { event.preventDefault(); if (review) review.click(); }
+  });
+
+  var DEVICE_KEY = "meeting-mic-device-id", select = document.getElementById("mic-device");
+  var label = document.getElementById("mic-device-label"), fill = document.getElementById("mic-meter-fill");
+  var meterText = document.getElementById("mic-meter-text"), micCheck = document.getElementById("chk-mic");
+  var micState = document.getElementById("mic-state"), stream = null, ctx = null, raf = 0;
+  function setLabel(text) { if (label) label.textContent = text; }
+  async function listDevices() {
+    var devices = await navigator.mediaDevices.enumerateDevices(), inputs = devices.filter(function (d) { return d.kind === "audioinput"; });
+    var saved = localStorage.getItem(DEVICE_KEY) || ""; select.innerHTML = "";
+    inputs.forEach(function (d, i) { var opt = document.createElement("option"); opt.value = d.deviceId; opt.textContent = d.label || ("麦克风 " + (i + 1)); if (d.deviceId === saved) opt.selected = true; select.appendChild(opt); });
+    if (!select.value && inputs.length) select.selectedIndex = 0;
+    if (select.value) localStorage.setItem(DEVICE_KEY, select.value);
+    var chosen = select.options[select.selectedIndex]; setLabel(chosen ? chosen.textContent : "未发现输入设备");
+  }
+  function stopMeter() { if (raf) cancelAnimationFrame(raf); raf = 0; if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; } if (ctx) { try { ctx.close(); } catch (_e) {} ctx = null; } }
+  async function startMeter(deviceId) {
+    stopMeter(); var constraints = { echoCancellation: true, noiseSuppression: true, channelCount: 1 }; if (deviceId) constraints.deviceId = { exact: deviceId };
+    try { stream = await navigator.mediaDevices.getUserMedia({ audio: constraints }); } catch (_e) { delete constraints.deviceId; stream = await navigator.mediaDevices.getUserMedia({ audio: constraints }); }
+    if (micCheck) micCheck.textContent = "● 麦克风权限正常"; if (micState) { micState.textContent = "麦克风正常"; micState.className = "badge badge-ok"; }
+    await listDevices(); ctx = new AudioContext(); var src = ctx.createMediaStreamSource(stream), analyser = ctx.createAnalyser(); analyser.fftSize = 2048; src.connect(analyser); var data = new Uint8Array(analyser.fftSize);
+    function tick() { analyser.getByteTimeDomainData(data); var sum = 0; for (var i = 0; i < data.length; i++) { var v = (data[i] - 128) / 128; sum += v * v; } var pct = Math.min(100, Math.round(Math.sqrt(sum / data.length) * 400)); if (fill) fill.style.width = pct + "%"; if (meterText) meterText.textContent = pct > 8 ? "检测到声音" : "正在检测声音……"; raf = requestAnimationFrame(tick); }
+    tick();
+  }
+  if (select) select.addEventListener("change", function () { localStorage.setItem(DEVICE_KEY, select.value); startMeter(select.value); });
+  var refresh = document.getElementById("mic-refresh"); if (refresh) refresh.addEventListener("click", function () { startMeter(select && select.value); });
+  if (navigator.mediaDevices) startMeter(localStorage.getItem(DEVICE_KEY) || "").catch(function () { if (micCheck) micCheck.textContent = "○ 麦克风不可用"; if (micState) micState.textContent = "请检查麦克风"; setLabel("无法访问麦克风"); });
+  fetch("/api/health").then(function (r) { return r.ok ? r.json() : Promise.reject(); }).then(function () { var el = document.getElementById("chk-server"); if (el) el.textContent = "● 本地服务连接正常"; }).catch(function () { var el = document.getElementById("chk-server"); if (el) el.textContent = "○ 本地服务连接异常"; });
+  window.addEventListener("pagehide", stopMeter);
+})();
+</script>
+{% endblock %}

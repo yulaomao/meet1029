@@ -1,0 +1,29 @@
+{% extends "shell.html" %}
+{% block title %}任务{% endblock %}
+{% block page_title %}任务{% endblock %}
+{% block content %}
+<div class="tabs">
+  <h2>人工/会议任务</h2>
+  {% for a in action_items %}
+    <a class="card-row" href="{{ url_for('tasks.task_detail', task_id=a.id) }}">
+      <span>□ {{ a.description }}</span>
+      <span class="muted">{{ a.owner }} · {{ a.status }}</span>
+    </a>
+  {% else %}<p class="muted">暂无待办</p>{% endfor %}
+  <h2>AI定时任务</h2>
+  <form method="post" action="{{ url_for('tasks.create_scheduled') }}" class="form-stack">
+  {% include "partials/csrf.html" %}
+
+    <input name="name" placeholder="任务名称" required>
+    <textarea name="prompt" placeholder="告诉AI要做什么"></textarea>
+    <input name="cron_expression" value="0 9 * * *" placeholder="Cron（高级）">
+    <button class="btn-primary">创建任务</button>
+  </form>
+  {% for t in scheduled_tasks %}
+    <a class="card-row" href="{{ url_for('tasks.task_detail', task_id=t.id) }}">
+      <strong>{{ t.name }}</strong>
+      <span class="muted">{{ t.cron_expression }} · {{ '启用' if t.enabled else '暂停' }}</span>
+    </a>
+  {% endfor %}
+</div>
+{% endblock %}

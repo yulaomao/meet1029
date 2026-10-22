@@ -1,0 +1,45 @@
+{% extends "shell.html" %}
+{% block title %}会议 · AI 会议{% endblock %}
+{% block page_title %}会议{% endblock %}
+{% block content %}
+<div class="dash-head">
+  <form method="get"><input name="q" value="{{ q }}" placeholder="搜索会议、人员、内容……"></form>
+  <div class="button-row"><a class="btn-secondary" href="{{ url_for('meetings.import_audio') }}">导入录音</a><a class="btn-primary" href="{{ url_for('meetings.new_meeting') }}">+ 开始会议</a></div>
+</div>
+{% for m in meetings %}
+  {% set job = jobs.get(m.id) %}
+  <a class="card-row" href="{{ url_for('meetings.detail', meeting_id=m.id) }}"{% if job and job.state in ['QUEUED', 'RUNNING'] %} data-processing-meeting="{{ m.id }}"{% endif %}>
+    <div>
+      <strong>{{ m.name }}</strong>
+      <div class="muted" data-job-summary>{{ m.created_at }} · {{ m.status }}{% if job and job.state in ['QUEUED', 'RUNNING'] %} · 正在{{ {'queued':'排队等待','assembling':'合并录音','normalizing':'标准化音频','transcribing':'完整转写','correcting':'AI 校订','speakers':'识别说话人','summarizing':'生成总结','embedding':'写入知识库','finalizing':'完成收尾'}.get(job.stage, '后台处理') }}（{{ job.progress }}%）{% elif job and job.state == 'FAILED' %} · 处理失败{% endif %}</div>
+    </div>
+    {% if job and job.state in ['QUEUED', 'RUNNING'] %}<span class="badge badge-ai" data-job-badge>处理中 {{ job.progress }}%</span>{% elif job and job.state == 'FAILED' %}<span class="badge badge-failed">处理失败</span>{% else %}<span>{{ m.status }}</span>{% endif %}
+  </a>
+{% else %}
+  <p class="muted">还没有会议</p>
+{% endfor %}
+{% endblock %}
+{% block scripts %}
+<script>
+const processingRows = [...document.querySelectorAll('[data-processing-meeting]')];
+const stageNames = {queued:'排队等待', assembling:'合并录音', normalizing:'标准化音频', transcribing:'完整转写', correcting:'AI 校订', speakers:'识别说话人', summarizing:'生成总结', embedding:'写入知识库', finalizing:'完成收尾'};
+async function refreshProcessingRows() {
+  let complete = false;
+  await Promise.all(processingRows.map(async (row) => {
+    try {
+      const response = await fetch(`/api/meetings/${row.dataset.processingMeeting}/processing-status`);
+      const job = await response.json();
+      if (!response.ok) return;
+      if (job.state === 'COMPLETED' || job.state === 'FAILED') { complete = true; return; }
+      const label = stageNames[job.stage] || '后台处理';
+      const summary = row.querySelector('[data-job-summary]');
+      const badge = row.querySelector('[data-job-badge]');
+      if (summary) summary.textContent = `${summary.textContent.split(' · 正在')[0]} · 正在${label}（${job.progress || 0}%）`;
+      if (badge) badge.textContent = `处理中 ${job.progress || 0}%`;
+    } catch (_) { /* retain the last confirmed progress on transient errors */ }
+  }));
+  if (complete) window.location.reload();
+}
+if (processingRows.length) { refreshProcessingRows(); window.setInterval(refreshProcessingRows, 2500); }
+</script>
+{% endblock %}

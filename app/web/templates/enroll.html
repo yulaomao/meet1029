@@ -1,0 +1,42 @@
+{% extends "shell.html" %}
+{% block title %}声纹登记{% endblock %}
+{% block page_title %}声纹登记{% endblock %}
+{% block content %}
+<div id="enroll-root"
+     data-profile-id="{{ profile.id }}"
+     data-user-id="{{ user.id }}"
+     data-enroll-url="{{ url_for('api.enroll', profile_id=profile.id) }}">
+  <p>请在安静环境下，以正常会议音量朗读。录音目标：30～60秒。</p>
+  <p class="muted">{{ user.name }} · {{ user.email }}</p>
+  <div class="enroll-mic" aria-hidden="true">🎙</div>
+  <div class="enroll-bar" id="enroll-bar"><span id="enroll-bar-fill"></span></div>
+  <div id="enroll-meter">0秒 / 建议60秒</div>
+  <div class="enroll-quality" id="enroll-quality">
+    <div>声音质量</div>
+    <ul>
+      <li id="q-volume">○ 音量</li>
+      <li id="q-noise">○ 背景噪声</li>
+      <li id="q-speech">○ 有效语音</li>
+    </ul>
+  </div>
+  <p id="enroll-error" class="banner banner-error" hidden></p>
+  <div class="form-stack">
+    <div class="enroll-actions">
+      <button class="btn-primary" id="enroll-start" type="button">开始录音</button>
+      <button class="btn-danger" id="enroll-stop" type="button" disabled>停止</button>
+    </div>
+    <form method="post" enctype="multipart/form-data" id="enroll-form" class="form-stack">
+  {% include "partials/csrf.html" %}
+
+      <input type="hidden" name="sample_seconds" id="sample_seconds" value="0">
+      <label class="muted">或上传录音文件（wav/webm）
+        <input type="file" name="audio" id="enroll-file" accept="audio/*,.wav,.webm,.m4a">
+      </label>
+      <button class="btn-primary" id="enroll-btn" type="submit" disabled>完成登记</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/enroll.js') }}"></script>
+{% endblock %}

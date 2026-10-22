@@ -1,0 +1,7 @@
+<nav class="mobile-nav" aria-label="移动导航">
+  <a href="{{ url_for('pages.dashboard') }}">首页</a>
+  <a href="{{ url_for('meetings.list_meetings') }}">会议</a>
+  <a class="fab-start" href="{{ url_for('meetings.new_meeting') }}" aria-label="开始会议">+</a>
+  <a href="{{ url_for('tasks.list_tasks') }}">任务</a>
+  <a href="{{ url_for('settings.settings') }}">我的</a>
+</nav>

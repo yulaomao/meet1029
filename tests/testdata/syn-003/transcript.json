@@ -1,0 +1,41 @@
+{
+  "id": "syn-003",
+  "title": "股骨远端截骨讨论",
+  "speakers": [
+    "张工",
+    "李工",
+    "王工",
+    "赵工"
+  ],
+  "segments": [
+    {
+      "start_ms": 0,
+      "end_ms": 500,
+      "speaker": "张工",
+      "text": "股骨远端截骨角度需要再确认。"
+    },
+    {
+      "start_ms": 600,
+      "end_ms": 1100,
+      "speaker": "李工",
+      "text": "胫骨平台的球心标定已经完成。"
+    },
+    {
+      "start_ms": 1200,
+      "end_ms": 1700,
+      "speaker": "王工",
+      "text": "SlicerIGT 配准误差在零点一五毫米。"
+    },
+    {
+      "start_ms": 1800,
+      "end_ms": 2300,
+      "speaker": "赵工",
+      "text": "我们现在讨论AI算法优化，先不点名助手。"
+    }
+  ],
+  "terms": [
+    "股骨远端",
+    "胫骨平台",
+    "SlicerIGT"
+  ]
+}

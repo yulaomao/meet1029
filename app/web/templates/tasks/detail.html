@@ -1,0 +1,18 @@
+{% extends "shell.html" %}
+{% block title %}任务详情{% endblock %}
+{% block page_title %}任务详情{% endblock %}
+{% block content %}
+{% if task %}
+  <div class="dash-head"><div><h1>{{ task.name }}</h1><p class="muted">{{ task.cron_expression }} · {{ '启用' if task.enabled else '已暂停' }}</p></div><div class="button-row"><form method="post" action="{{ url_for('tasks.run_scheduled', task_id=task.id) }}">{% include "partials/csrf.html" %}<button type="submit">立即执行</button></form><form method="post" action="{{ url_for('tasks.toggle_scheduled', task_id=task.id) }}">{% include "partials/csrf.html" %}<button class="{{ 'btn-danger' if task.enabled else 'btn-primary' }}" type="submit">{{ '暂停' if task.enabled else '启用' }}</button></form></div></div>
+  <section class="panel"><p>{{ task.prompt }}</p></section>
+  <h2>执行记录</h2>
+  {% for r in runs %}
+    <div class="card-row">{{ r.status }} · {{ r.started_at }} <pre>{{ r.output }}</pre></div>
+  {% else %}<p class="muted">尚无运行记录</p>{% endfor %}
+{% elif action_item %}
+  <h1>{{ action_item.description }}</h1>
+  <p>负责人：{{ action_item.owner }} · 状态：{{ action_item.status }}</p>
+{% else %}
+  <p>未找到任务</p>
+{% endif %}
+{% endblock %}

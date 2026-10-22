@@ -1,0 +1,3 @@
+from app.providers.notification import InAppNotificationProvider
+
+NotificationService = InAppNotificationProvider

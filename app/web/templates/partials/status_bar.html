@@ -1,0 +1,13 @@
+<div class="status-bar" id="status-bar" role="status">
+  <span><span class="dot rec"></span> 正在录音 <strong id="rec-time">00:00:00</strong></span>
+  <span>主持人 <strong id="host-label">{{ meeting.host_client_id or "本机" }}</strong></span>
+  <span>ASR延迟 <strong id="asr-lag">—</strong></span>
+  <span>上传队列 <strong id="upload-queue">0</strong></span>
+  <span>连接 <strong id="conn-state">在线</strong></span>
+  <span>AI首字延迟 <strong id="ai-lag">—</strong></span>
+</div>
+<div class="mobile-health" id="mobile-health">
+  <span>●录音</span>
+  <span>●上传</span>
+  <span>●AI</span>
+</div>

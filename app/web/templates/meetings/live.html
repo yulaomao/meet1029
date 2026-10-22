@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}实时会议 · {{ meeting.name }}{% endblock %}
+{% block body_class %}live-page{% endblock %}
+{% block body %}
+<div class="live-root" id="live-root"
+     data-meeting-id="{{ meeting.id }}"
+     data-is-host="{{ '1' if is_host else '0' }}"
+     data-host-client="{{ meeting.host_client_id or '' }}">
+  <header class="live-header">
+    <div>
+      <span class="dot rec"></span>
+      <strong>{{ meeting.name }}</strong>
+    </div>
+    <div class="live-actions">
+      <button id="end-meeting" class="btn-danger" type="button">结束会议</button>
+    </div>
+  </header>
+  {% include "partials/status_bar.html" %}
+  <div class="live-split">
+    <section class="transcript-pane" id="transcript-pane">
+      <h2>实时会议记录</h2>
+      <div id="transcript-list">
+        {% for s in segments %}
+          <article class="seg" id="seg-{{ s.id }}" data-id="{{ s.id }}" data-start-ms="{{ s.start_ms }}">
+            <header><strong>{{ s.speaker_label }}</strong> <span class="muted">{{ s.start_ms }}ms</span></header>
+            <p>{{ s.display_text or s.raw_text }}</p>
+          </article>
+        {% endfor %}
+      </div>
+      <div id="partial" class="partial">▌</div>
+    </section>
+    <aside class="intel-pane" aria-label="会议状态与成就精灵">
+      <section class="assistant-panel" aria-live="polite">
+        <div class="intel-heading"><h2>成就精灵回答</h2><span id="ai-state" class="badge badge-ai">等待点名</span></div>
+        <p class="ai-callout" id="ai-callout" hidden>✦ 正在结合当前讨论和历史资料…</p>
+        <div id="ai-token-stream" class="token-stream"></div>
+        <button type="button" id="stop-ai" class="btn-danger" disabled title="停止朗读并结束本轮连续对话">停止 AI 回复</button>
+      </section>
+      <section class="meeting-state-panel">
+      <div class="intel-heading"><h2>会议状态</h2></div>
+      <p>当前议题：<span id="live-topic">{{ state.current_topic or "—" }}</span></p>
+      <h3>滚动摘要</h3>
+      <p id="live-summary">{{ state.rolling_summary or "—" }}</p>
+      <h3>已确认</h3>
+      <ul id="live-decisions">{% for d in state.decisions %}<li>{{ d.text if d is mapping else d }}</li>{% else %}<li class="muted">暂无</li>{% endfor %}</ul>
+      <h3>待解决</h3>
+      <ul id="live-questions">{% for q in state.open_questions %}<li>{{ q }}</li>{% else %}<li class="muted">暂无</li>{% endfor %}</ul>
+      <h3>Action Items</h3>
+      <ul id="live-actions">{% for a in state.action_items %}<li>{{ a.description if a is mapping else a }}</li>{% else %}<li class="muted">暂无</li>{% endfor %}</ul>
+      <h3>参会人观点</h3>
+      <div id="live-speaker-views" class="speaker-views">
+        {% for view in state.speaker_views %}
+          <article class="speaker-view">
+            <h4>{{ view.speaker_label }} <span class="view-topic">· {{ view.topic }}</span></h4>
+            {% for point in view.explicit_stances %}<p><span class="badge badge-stance">{{ point.position }}</span> {{ point.text }}</p>{% endfor %}
+            {% for point in view.key_points %}<p>{{ point.text }}</p>{% endfor %}
+            {% for point in view.suggestions %}<p>建议：{{ point.text }}</p>{% endfor %}
+            {% for point in view.concerns %}<p class="view-concern">顾虑：{{ point.text }}</p>{% endfor %}
+            {% for point in view.possible_tendencies %}<p class="view-tendency">可能倾向：{{ point.text }}</p>{% endfor %}
+          </article>
+        {% else %}<p class="muted">尚未形成可验证的按人观点</p>{% endfor %}
+      </div>
+      <button type="button" id="bookmark">★ 标记此刻</button>
+      </section>
+      {% if not is_host %}
+        <form method="post" action="{{ url_for('api.host_transfer', meeting_id=meeting.id) }}" id="takeover-form">
+          {% include "partials/csrf.html" %}
+          <button type="button" id="take-host">接管录音</button>
+        </form>
+      {% endif %}
+    </aside>
+  </div>
+</div>
+{% include "partials/mobile_nav.html" %}
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/socket.io.min.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/live.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends "shell.html" %}
+{% block title %}系统状态{% endblock %}
+{% block page_title %}系统状态{% endblock %}
+{% block content %}
+<ul class="check-list">
+  <li>Web服务 · {{ health.web }}</li>
+  <li>数据库 · {{ health.database }}</li>
+  <li>ASR · {{ health.asr }}</li>
+  <li>LLM · {{ health.llm }}</li>
+  <li>TTS · {{ health.tts }}</li>
+  <li>当前会议 · {{ health.live_meetings }}</li>
+  <li>总体 · {{ health.status }}</li>
+</ul>
+{% if health.degraded_meetings %}
+  <h3>降级</h3>
+  <pre>{{ health.degraded_meetings }}</pre>
+{% endif %}
+{% endblock %}

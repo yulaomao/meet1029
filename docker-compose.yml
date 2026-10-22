@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: meeting_ai_postgres
+    environment:
+      POSTGRES_USER: meeting
+      POSTGRES_PASSWORD: meeting
+      POSTGRES_DB: meeting_ai
+    ports:
+      - "5432:5432"
+    volumes:
+      - meeting_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U meeting -d meeting_ai"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  meeting_pgdata:

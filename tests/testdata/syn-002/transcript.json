@@ -1,0 +1,32 @@
+{
+  "id": "syn-002",
+  "title": "电源与EtherCAT评审",
+  "speakers": [
+    "王工",
+    "赵工",
+    "张工"
+  ],
+  "segments": [
+    {
+      "start_ms": 0,
+      "end_ms": 500,
+      "speaker": "王工",
+      "text": "EtherCAT 总线抖动还是偏大。"
+    },
+    {
+      "start_ms": 600,
+      "end_ms": 1100,
+      "speaker": "赵工",
+      "text": "电源是二百二十伏五安。"
+    },
+    {
+      "start_ms": 1200,
+      "end_ms": 1700,
+      "speaker": "张工",
+      "text": "助手，总结一下现在的结论。"
+    }
+  ],
+  "terms": [
+    "EtherCAT"
+  ]
+}

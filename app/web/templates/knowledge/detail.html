@@ -1,0 +1,12 @@
+{% extends "shell.html" %}
+{% block title %}{{ document.title if document else "文档" }}{% endblock %}
+{% block page_title %}知识文档{% endblock %}
+{% block content %}
+{% if document %}
+  <h1>{{ document.title }}</h1>
+  <p class="muted">{{ document.status }}</p>
+  <pre class="body-pre">{{ document.content }}</pre>
+{% else %}
+  <p>文档不存在</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends "shell.html" %}
+{% block title %}导入录音{% endblock %}
+{% block page_title %}导入录音{% endblock %}
+{% block content %}
+<div class="meeting-start-layout">
+  <section class="panel">
+    <div class="section-title"><h2>从音频生成会议记录</h2><span class="badge badge-ai">本地处理</span></div>
+    <p class="muted">音频、转写、校订、总结与声纹处理均在本机完成。导入后可直接在会议详情中查看进度。</p>
+    <form id="import-audio-form" class="form-stack" enctype="multipart/form-data">
+      <label>音频文件
+        <input name="audio" type="file" accept=".wav,.mp3,.m4a,.aac,.flac,.ogg,.opus,.webm,audio/*" required>
+      </label>
+      <p class="muted">支持 WAV、MP3、M4A/AAC、FLAC、OGG/Opus、WebM；最大 2 GiB、最长 8 小时。</p>
+      <label>会议名称
+        <input name="name" placeholder="例如：产品方案讨论（可留空，完成后自动命名）">
+      </label>
+      <label>预计人数
+        <select name="expected_speakers"><option>1</option><option>2</option><option selected>4</option><option>6</option><option>8</option></select>
+      </label>
+      <label>会议类型
+        <select name="meeting_type"><option>技术讨论</option><option>项目例会</option><option>评审</option><option selected>其他</option></select>
+      </label>
+      <label class="check-line"><input type="checkbox" name="consent" required> 我已取得与会人员对录音及 AI 转写的告知同意</label>
+      <div class="button-row"><button class="btn-primary" type="submit" id="import-submit">导入并生成会议记录</button><a href="{{ url_for('meetings.list_meetings') }}">取消</a></div>
+      <p class="muted" id="import-progress" role="status"></p>
+    </form>
+  </section>
+  <section class="panel">
+    <div class="section-title"><h2>处理内容</h2><span class="badge">单任务队列</span></div>
+    <ul class="check-list compact-check-list">
+      <li>● 音频标准化与完整转写</li>
+      <li>● 中文标点、上下文校订与自动标题</li>
+      <li>● 本地声纹聚类；仅高置信度时显示实名</li>
+      <li>● 会议总结、决策、待办和可导出逐字稿</li>
+    </ul>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(() => {
+  const form = document.getElementById('import-audio-form');
+  const submit = document.getElementById('import-submit');
+  const progress = document.getElementById('import-progress');
+  if (!form) return;
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const data = new FormData(form); submit.disabled = true;
+    const xhr = new XMLHttpRequest(); xhr.open('POST', '/api/meetings/import');
+    xhr.upload.addEventListener('progress', (e) => { if (e.lengthComputable) progress.textContent = `正在上传：${Math.round(e.loaded / e.total * 100)}%`; });
+    xhr.addEventListener('load', () => {
+      let body = {}; try { body = JSON.parse(xhr.responseText || '{}'); } catch (_) {}
+      if (xhr.status >= 200 && xhr.status < 300 && body.detail_url) { progress.textContent = '上传完成，正在进入本地处理队列…'; window.location.assign(body.detail_url); return; }
+      progress.textContent = body.error || '导入失败，请检查音频文件后重试。'; submit.disabled = false;
+    });
+    xhr.addEventListener('error', () => { progress.textContent = '上传连接失败，请重试。'; submit.disabled = false; });
+    xhr.send(data);
+  });
+})();
+</script>
+{% endblock %}

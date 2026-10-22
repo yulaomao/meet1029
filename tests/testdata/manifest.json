@@ -1,0 +1,43 @@
+{
+  "version": "0.1",
+  "note": "Synthetic small fixtures. Do not download full AISHELL-4 / WenetSpeech.",
+  "meetings": [
+    {
+      "id": "syn-001",
+      "title": "膝关节导航技术讨论",
+      "wav": "tests/testdata/syn-001/meeting.wav",
+      "transcript": "tests/testdata/syn-001/transcript.json",
+      "golden": false
+    },
+    {
+      "id": "syn-002",
+      "title": "电源与EtherCAT评审",
+      "wav": "tests/testdata/syn-002/meeting.wav",
+      "transcript": "tests/testdata/syn-002/transcript.json",
+      "golden": false
+    },
+    {
+      "id": "syn-003",
+      "title": "股骨远端截骨讨论",
+      "wav": "tests/testdata/syn-003/meeting.wav",
+      "transcript": "tests/testdata/syn-003/transcript.json",
+      "golden": false
+    },
+    {
+      "id": "golden-med-001",
+      "title": "骨科导航内部黄金集甲",
+      "wav": "tests/testdata/golden-med-001/meeting.wav",
+      "transcript": "tests/testdata/golden-med-001/transcript.json",
+      "golden": true
+    },
+    {
+      "id": "golden-med-002",
+      "title": "骨科导航内部黄金集乙",
+      "wav": "tests/testdata/golden-med-002/meeting.wav",
+      "transcript": "tests/testdata/golden-med-002/transcript.json",
+      "golden": true
+    }
+  ],
+  "speaker_embeddings": "tests/testdata/speaker_embeddings.json",
+  "private_release": "tests/testdata/private_release/expected.json"
+}

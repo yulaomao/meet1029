@@ -1,0 +1,18 @@
+{% extends "shell.html" %}
+{% block title %}团队{% endblock %}
+{% block page_title %}团队成员{% endblock %}
+{% block content %}
+{% for u in users %}
+  {% set p = profiles.get(u.id) %}
+  <div class="card-row">
+    <div>
+      <strong>{{ u.name }}</strong>
+      <div class="muted">{{ u.email }} · {{ u.role }}</div>
+    </div>
+    <div>
+      声纹 {{ "● 已登记" if p and p.enrolled_at else "○ 未登记" }}
+      <a href="{{ url_for('members.enroll', user_id=u.id) }}">登记/重新登记</a>
+    </div>
+  </div>
+{% endfor %}
+{% endblock %}

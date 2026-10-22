@@ -1,0 +1,18 @@
+speech:
+  asr:
+    provider: funasr
+  diarization:
+    provider: fake
+  speaker_id:
+    provider: cosine
+  tts:
+    provider: macos-say
+llm:
+  default:
+    provider: qwen38-local
+    model: mtplx-qwen38-27b-optimized-quality
+  advanced:
+    provider: qwen38-local
+    model: mtplx-qwen38-27b-optimized-quality
+scheduler:
+  provider: apscheduler

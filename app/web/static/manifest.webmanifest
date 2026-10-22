@@ -1,0 +1,12 @@
+{
+  "name": "AI会议工作台",
+  "short_name": "AI会议",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f6f8",
+  "theme_color": "#1e3a5f",
+  "lang": "zh-CN",
+  "icons": [
+    { "src": "/static/icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

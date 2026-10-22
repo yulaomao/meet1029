@@ -1,0 +1,17 @@
+{% extends "shell.html" %}
+{% block title %}设置{% endblock %}
+{% block page_title %}系统设置{% endblock %}
+{% block content %}
+<section class="panel">
+  <h2>AI模型</h2>
+  <p>后端：<span class="badge badge-ai">{{ llm_backend }}</span></p>
+  <p>模型：{{ local_model }}</p>
+  <p class="muted">本机网关：{{ local_url }}</p>
+</section>
+<section class="panel">
+  <h2>语音模型</h2>
+  <p>后端：<span class="badge badge-ok">{{ speech_backend }}</span></p>
+  <p class="muted">ASR：{{ providers.asr.__class__.__name__ if providers else "—" }}</p>
+</section>
+<p><a href="{{ url_for('health.health_page') }}">系统状态</a></p>
+{% endblock %}

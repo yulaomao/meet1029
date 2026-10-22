@@ -1,0 +1,21 @@
+{% extends "shell.html" %}
+{% block title %}知识库{% endblock %}
+{% block page_title %}知识库{% endblock %}
+{% block content %}
+<form method="get"><input name="q" value="{{ q }}" placeholder="搜索资料……"></form>
+<form method="post" class="form-stack">
+  {% include "partials/csrf.html" %}
+
+  <input name="title" placeholder="标题" required>
+  <textarea name="content" placeholder="内容"></textarea>
+  <button class="btn-primary">上传/索引</button>
+</form>
+{% if hits %}
+  <h2>搜索结果</h2>
+  {% for h in hits %}<div class="card-row">{{ h.text }} <span class="muted">{{ '%.2f'|format(h.score) }}</span></div>{% endfor %}
+{% endif %}
+<h2>最近资料</h2>
+{% for d in documents %}
+  <a class="card-row" href="{{ url_for('knowledge.detail', doc_id=d.id) }}">{{ d.title }} · {{ d.status }}</a>
+{% else %}<p class="muted">暂无文档</p>{% endfor %}
+{% endblock %}

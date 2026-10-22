@@ -1,0 +1,2 @@
+请根据会议逐字稿输出 JSON，字段: summary, topics, decisions, action_items, risks, open_questions, follow_ups。
+禁止编造原文没有的事实，禁止修改数字和否定词。

@@ -1,0 +1,27 @@
+{% extends "shell.html" %}
+{% block title %}AI工作台{% endblock %}
+{% block page_title %}AI工作台{% endblock %}
+{% block content %}
+<p>询问范围：
+  <label><input type="radio" name="scope" checked> 全部会议</label>
+  <label><input type="radio" name="scope"> 当前项目</label>
+  <label><input type="radio" name="scope"> 指定会议</label>
+  <label><input type="radio" name="scope"> 知识库</label>
+</p>
+<form id="ai-form" class="form-stack">
+  <textarea id="ai-q" placeholder="例如：最近三个月针尖球心补偿方案发生过哪些变化？"></textarea>
+  <button class="btn-primary" type="submit">询问</button>
+</form>
+<div id="ai-answer" class="card-row"></div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById("ai-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const q = document.getElementById("ai-q").value;
+  const r = await fetch("/api/ai/query", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({query:q})});
+  const data = await r.json();
+  document.getElementById("ai-answer").textContent = data.answer || JSON.stringify(data);
+});
+</script>
+{% endblock %}

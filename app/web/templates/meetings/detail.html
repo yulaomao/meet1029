@@ -1,0 +1,140 @@
+{% extends "shell.html" %}
+{% block body_class %}meeting-detail-page{% endblock %}
+{% block title %}{{ meeting.name }}{% endblock %}
+{% block page_title %}会议详情{% endblock %}
+{% block content %}
+<div class="dash-head">
+  <div>
+    <h1>{{ meeting.name }}</h1>
+    <p class="muted">{{ meeting.status }} · {{ meeting.created_at }}</p>
+  </div>
+  <div class="button-row">
+    <a class="btn-secondary" href="{{ url_for('meetings.export_meeting', meeting_id=meeting.id) }}">导出 TXT</a>
+    <a class="btn-secondary" href="{{ url_for('meetings.export_meeting', meeting_id=meeting.id, format='json') }}">导出 JSON</a>
+    <button type="button" class="btn-primary" id="ask-ai">询问AI</button>
+  </div>
+</div>
+{% if import_job and import_job.state != 'COMPLETED' %}
+<section class="panel" id="import-job" data-meeting-id="{{ meeting.id }}" data-state="{{ import_job.state }}">
+  <div class="section-title"><h2>{{ '会议后台处理' if import_job.kind == 'live' else '导入处理' }}</h2><span class="badge" id="import-stage">{{ import_job.stage }}</span></div>
+  <p id="import-job-message" class="muted">{{ '录音已保存，后台正在生成完整记录' if import_job.kind == 'live' else import_job.original_filename }} · {{ import_job.progress }}%</p>
+  <div class="enroll-bar" aria-hidden="true"><span id="import-job-bar" style="width: {{ import_job.progress }}%"></span></div>
+  <p id="import-job-error" class="error-text"{% if not import_job.error %} hidden{% endif %}>{{ import_job.error }}</p>
+  <button type="button" class="btn-secondary" id="retry-import"{% if import_job.state != 'FAILED' %} hidden{% endif %}>重新处理</button>
+</section>
+{% endif %}
+<section id="meeting-ai-panel" class="panel ask-panel" hidden>
+  <form id="meeting-ai-form" class="inline-form"><input id="meeting-ai-input" aria-label="向 AI 提问" placeholder="基于本次会议提问，例如：有哪些尚未确认的风险？" required><button class="btn-primary" type="submit">发送</button></form>
+  <p id="meeting-ai-answer" class="answer-text" aria-live="polite"></p>
+</section>
+<div class="dual-pane">
+  <section class="notes-pane panel">
+    <div class="section-title"><h2>AI 会议结论</h2><span class="badge badge-ai">AI 生成</span></div>
+    <h3>会议总结</h3>
+    <p>{{ summary.summary if summary else "处理完成后将显示总结" }}</p>
+    <h3>决策</h3>
+    <ul>
+      {% for d in decisions %}
+        <li class="citation" data-segment="{{ d.source_segment_id or '' }}">{{ d.text }}{% if d.source_segment_id %}<small> 依据 ↗</small>{% endif %}</li>
+      {% else %}
+        <li class="muted">暂无决策</li>
+      {% endfor %}
+    </ul>
+    <h3>Action Items</h3>
+    <ul>
+      {% for a in action_items %}
+        <li class="citation" data-segment="{{ a.source_segment_id or '' }}">{{ a.description }}{% if a.owner %} · {{ a.owner }}{% endif %}{% if a.source_segment_id %}<small> 依据 ↗</small>{% endif %}</li>
+      {% else %}
+        <li class="muted">暂无任务</li>
+      {% endfor %}
+    </ul>
+    <h3>风险</h3>
+    <ul>
+      {% if summary %}
+        {% for r in summary.risks %}<li>{{ r }}</li>{% endfor %}
+      {% endif %}
+    </ul>
+    <h3>参会人观点</h3>
+    <div class="speaker-views">
+      {% for view in (summary.payload.speaker_views if summary and summary.payload else []) %}
+        <article class="speaker-view">
+          <h4>{{ view.speaker_label }} <span class="view-topic">· {{ view.topic }}</span></h4>
+          {% for point in view.explicit_stances %}<p><span class="badge badge-stance">{{ point.position }}</span> {{ point.text }}{% for source_id in point.source_segment_ids %} <a class="view-source" href="#seg-{{ source_id }}">依据</a>{% endfor %}</p>{% endfor %}
+          {% for point in view.key_points %}<p>{{ point.text }}{% for source_id in point.source_segment_ids %} <a class="view-source" href="#seg-{{ source_id }}">依据</a>{% endfor %}</p>{% endfor %}
+          {% for point in view.suggestions %}<p>建议：{{ point.text }}{% for source_id in point.source_segment_ids %} <a class="view-source" href="#seg-{{ source_id }}">依据</a>{% endfor %}</p>{% endfor %}
+          {% for point in view.concerns %}<p class="view-concern">顾虑：{{ point.text }}{% for source_id in point.source_segment_ids %} <a class="view-source" href="#seg-{{ source_id }}">依据</a>{% endfor %}</p>{% endfor %}
+          {% for point in view.open_questions %}<p class="view-concern">待确认：{{ point.text }}{% for source_id in point.source_segment_ids %} <a class="view-source" href="#seg-{{ source_id }}">依据</a>{% endfor %}</p>{% endfor %}
+          {% for point in view.possible_tendencies %}<p class="view-tendency">可能倾向：{{ point.text }}{% for source_id in point.source_segment_ids %} <a class="view-source" href="#seg-{{ source_id }}">依据</a>{% endfor %}</p>{% endfor %}
+        </article>
+      {% else %}<p class="muted">暂无可验证的按人观点</p>{% endfor %}
+    </div>
+  </section>
+  <section class="transcript-pane panel">
+    <div class="section-title"><h2>逐字稿</h2><span class="badge">{{ segments|length }} 段</span></div>
+    {% if has_master %}
+    <audio id="meeting-audio" controls src="{{ url_for('meetings.meeting_audio', meeting_id=meeting.id) }}"></audio>
+    {% else %}
+    <p class="muted" id="meeting-audio-empty">会议音频尚未生成</p>
+    {% endif %}
+    <div id="transcript-list">
+      {% for s in segments %}
+        <article class="seg" id="seg-{{ s.id }}" data-start="{{ s.start_ms }}">
+          <header><strong>{{ s.speaker_label }}</strong> <span class="muted">{{ '%02d:%02d'|format((s.start_ms // 1000) // 60, (s.start_ms // 1000) % 60) }}</span><span class="text-source">{{ 'AI 校订' if s.corrected_text else ('SenseVoice 复核' if s.sensevoice_text else ('已加标点' if s.punctuated_text else '原始 ASR')) }}</span></header>
+          <p>{{ s.final_text or s.display_text or s.corrected_text or s.punctuated_text or s.raw_text }}</p>
+        </article>
+      {% else %}
+        <p class="muted">暂无逐字稿</p>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/citations.js') }}"></script>
+<script>
+const askButton = document.getElementById('ask-ai');
+const askPanel = document.getElementById('meeting-ai-panel');
+askButton?.addEventListener('click', () => { askPanel.hidden = !askPanel.hidden; if (!askPanel.hidden) document.getElementById('meeting-ai-input').focus(); });
+document.getElementById('meeting-ai-form')?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const input = document.getElementById('meeting-ai-input'); const answer = document.getElementById('meeting-ai-answer');
+  answer.textContent = '正在基于会议内容生成回答…';
+  try { const response = await fetch('/api/ai/query', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({meeting_id:'{{ meeting.id }}', query:input.value})}); const data = await response.json(); answer.textContent = data.answer || data.error || '暂时无法回答'; }
+  catch (_) { answer.textContent = '请求失败，请稍后再试。'; }
+});
+{% if import_job and import_job.state != 'COMPLETED' %}
+const importJob = document.getElementById('import-job');
+if (importJob) {
+  const stageNames = {queued:'排队等待', assembling:'合并录音', normalizing:'标准化音频', transcribing:'完整转写', correcting:'AI 校订', speakers:'识别说话人', summarizing:'生成总结', embedding:'写入会议知识库', finalizing:'完成收尾', completed:'处理完成', failed:'处理失败'};
+  const stage = document.getElementById('import-stage'), message = document.getElementById('import-job-message');
+  const bar = document.getElementById('import-job-bar'), error = document.getElementById('import-job-error'), retry = document.getElementById('retry-import');
+  const meetingId = importJob.dataset.meetingId;
+  let timer = null;
+  const render = (job, reloadOnTerminal = false) => {
+    stage.textContent = stageNames[job.stage] || job.stage || '处理中';
+    message.textContent = `${job.original_filename || '导入录音'} · ${job.progress || 0}%`;
+    bar.style.width = `${job.progress || 0}%`;
+    if (job.error) { error.hidden = false; error.textContent = job.error; } else { error.hidden = true; }
+    retry.hidden = job.state !== 'FAILED';
+    const terminal = job.state === 'COMPLETED' || job.state === 'FAILED';
+    if (terminal && (reloadOnTerminal || job.state === 'COMPLETED')) {
+      window.setTimeout(() => window.location.reload(), 500);
+    }
+    return terminal;
+  };
+  const poll = async () => {
+    try {
+      const response = await fetch(`/api/meetings/${meetingId}/processing-status`); const job = await response.json();
+      if (!response.ok || render(job, true)) { if (timer) clearInterval(timer); }
+    } catch (_) { /* preserve the last visible progress during a transient refresh failure */ }
+  };
+  if (!render({state: importJob.dataset.state, stage: {{ import_job.stage|tojson }}, progress: {{ import_job.progress }}, original_filename: {{ import_job.original_filename|tojson }}, error: {{ import_job.error|tojson }}})) { timer = window.setInterval(poll, 1500); poll(); }
+  retry?.addEventListener('click', async () => {
+    retry.disabled = true;
+    try { const response = await fetch(`/api/meetings/${meetingId}/import/retry`, {method:'POST'}); const job = await response.json(); if (!response.ok) throw new Error(job.error || '无法重新处理'); render(job); timer = window.setInterval(poll, 1500); poll(); }
+    catch (e) { error.hidden = false; error.textContent = e.message || '无法重新处理'; retry.disabled = false; }
+  });
+}
+{% endif %}
+</script>
+{% endblock %}

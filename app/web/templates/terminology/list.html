@@ -1,0 +1,33 @@
+{% extends "shell.html" %}
+{% block title %}术语库{% endblock %}
+{% block page_title %}术语库{% endblock %}
+{% block content %}
+<div class="dash-head">
+  <div><h1>术语库</h1><p class="muted">用于 FunASR 热词与 Qwen 校订上下文。</p></div>
+  <form method="get" class="inline-form"><input name="q" value="{{ q }}" placeholder="搜索术语或别名"><button type="submit">搜索</button></form>
+</div>
+<div class="content-grid terms-layout">
+  <section class="panel">
+    <h2>已维护术语 <span class="count">{{ terms|length }}</span></h2>
+    <div class="data-list">
+    {% for term in terms %}
+      <article class="card-row term-row">
+        <div><strong>{{ term.term }}</strong>{% if term.aliases %}<div class="muted">别名：{{ term.aliases|join('、') }}</div>{% endif %}{% if term.description %}<div class="muted">{{ term.description }}</div>{% endif %}</div>
+        <form method="post" action="{{ url_for('terminology.toggle_term', term_id=term.id) }}">{% include "partials/csrf.html" %}<button class="badge {{ 'badge-ok' if term.enabled else 'badge-muted' }}" type="submit">{{ '启用' if term.enabled else '停用' }}</button></form>
+      </article>
+    {% else %}<p class="empty-state">还没有术语。先录入项目名、产品名和缩写，可明显降低中文同音误识别。</p>{% endfor %}
+    </div>
+  </section>
+  <section class="panel">
+    <h2>新增或更新</h2>
+    <form method="post" class="form-stack compact-form">{% include "partials/csrf.html" %}
+      <label>术语<input name="term" placeholder="例如：针尖球心补偿" required></label>
+      <label>别名（逗号分隔）<input name="aliases" placeholder="例如：球心补偿, 球心标定"></label>
+      <label>说明<textarea name="description" rows="3" placeholder="可选，用于帮助校订模型理解上下文"></textarea></label>
+      <label>优先级<input name="priority" type="number" value="0"></label>
+      <label class="check-row"><input name="enabled" type="checkbox" checked> 立即启用</label>
+      <button class="btn-primary" type="submit">保存术语</button>
+    </form>
+  </section>
+</div>
+{% endblock %}
